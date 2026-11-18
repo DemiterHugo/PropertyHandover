@@ -35,7 +35,7 @@ internal object A2uiParser {
         val reader = SurfaceReader(components, surface.obj("dataModel"))
         val root = reader.readNode("root")
         if (components.isNotEmpty()) invalid("Unreachable components: ${components.keys}")
-        return A2uiSurface(surfaceId, root, reader.values.toMap())
+        return A2uiSurface(surfaceId, root, reader.values.toMap(), sourceMessage = message)
     }
 
     private class SurfaceReader(

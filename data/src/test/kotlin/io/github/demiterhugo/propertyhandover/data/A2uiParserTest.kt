@@ -13,12 +13,13 @@ class A2uiParserTest {
         val meter = forms.load(EntryType.METER)
 
         val damageControls = ((damage.root as A2uiNode.Card).child as A2uiNode.Column).children
-        val meterControls = (meter.root as A2uiNode.Column).children
+        val meterControls = ((meter.root as A2uiNode.Card).child as A2uiNode.Column).children
         assertEquals(listOf("title", "room", "description", "submit"), damageControls.map { it.id })
-        assertEquals(listOf("utility", "reading", "submit"), meterControls.map { it.id })
+        assertEquals(listOf("title", "utility", "reading", "submit"), meterControls.map { it.id })
         val description = damageControls[2] as A2uiNode.TextField
-        val utility = meterControls[0] as A2uiNode.ChoicePicker
-        val reading = meterControls[1] as A2uiNode.TextField
+        val utility = meterControls[1] as A2uiNode.ChoicePicker
+        val reading = meterControls[2] as A2uiNode.TextField
+        assertEquals(damageMessage(), damage.sourceMessage)
         assertEquals("## Detalles del daño", (damageControls[0] as A2uiNode.Text).text)
         assertEquals("Ej. Cocina", (damageControls[1] as A2uiNode.TextField).placeholder)
         assertEquals("Descripción del daño", description.label)
@@ -28,7 +29,7 @@ class A2uiParserTest {
         assertEquals(InputValue.Choices(emptyList()), meter.initialValues[utility.path])
         assertEquals(A2uiNode.TextField.Variant.NUMBER, reading.variant)
         assertEquals(null, reading.placeholder)
-        assertEquals("showSummary", (meterControls[2] as A2uiNode.Button).event)
+        assertEquals("showSummary", (meterControls[3] as A2uiNode.Button).event)
     }
 
     @Test

@@ -81,6 +81,25 @@ class HandoverFlowTest {
     }
 
     @Test
+    fun sourceViewerShowsTheMessageForTheSelectedForm() {
+        compose.onNodeWithText("Cada opción carga un formulario A2UI que se muestra con Jetpack Compose.")
+            .assertIsDisplayed()
+        choose("Daño en la vivienda")
+        awaitField("Estancia")
+        click("Ver mensaje A2UI")
+        compose.onNodeWithText("\"surfaceId\": \"damage\"", substring = true).assertExists()
+        compose.onNodeWithText("\"@path\": \"/room\"", substring = true).assertExists()
+        compose.onNodeWithText("Cerrar").performClick()
+
+        choose("Lectura de contador")
+        awaitField("Lectura")
+        click("Ver mensaje A2UI")
+        compose.onNodeWithText("\"surfaceId\": \"meter\"", substring = true).assertExists()
+        compose.onNodeWithText("\"component\": \"ChoicePicker\"", substring = true).assertExists()
+        compose.onNodeWithText("\"@path\": \"/room\"", substring = true).assertDoesNotExist()
+    }
+
+    @Test
     fun appStartsUnselectedAndSharesTheExactSummaryAfterChoosingMeter() {
         val damage = option("Daño en la vivienda")
         val meter = option("Lectura de contador")

@@ -4,6 +4,7 @@ data class A2uiSurface(
     val id: String,
     val root: A2uiNode,
     val initialValues: Map<String, InputValue>,
+    val sourceMessage: String,
 )
 
 sealed interface InputValue {

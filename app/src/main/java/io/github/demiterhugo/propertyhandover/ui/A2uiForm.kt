@@ -13,7 +13,6 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -72,8 +71,8 @@ internal fun A2uiForm(
                     text = node.text.removePrefix("## "),
                     modifier = Modifier.semantics { heading() },
                     fontFamily = FormHeadingFont,
-                    fontSize = 33.sp,
-                    lineHeight = 38.sp,
+                    fontSize = 30.sp,
+                    lineHeight = 35.sp,
                 )
             } else Text(node.text)
         }
@@ -104,10 +103,6 @@ internal fun A2uiForm(
         is A2uiNode.Button -> Button(
             onClick = { onEvent(node.event) },
             modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            ),
         ) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(node.child.text, modifier = Modifier.weight(1f))
