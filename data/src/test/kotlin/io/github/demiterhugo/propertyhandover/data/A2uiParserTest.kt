@@ -12,18 +12,22 @@ class A2uiParserTest {
         val damage = forms.load(EntryType.DAMAGE)
         val meter = forms.load(EntryType.METER)
 
-        val damageControls = (damage.root as A2uiNode.Column).children
+        val damageControls = ((damage.root as A2uiNode.Card).child as A2uiNode.Column).children
         val meterControls = (meter.root as A2uiNode.Column).children
-        assertEquals(listOf("room", "description", "submit"), damageControls.map { it.id })
+        assertEquals(listOf("title", "room", "description", "submit"), damageControls.map { it.id })
         assertEquals(listOf("utility", "reading", "submit"), meterControls.map { it.id })
-        val description = damageControls[1] as A2uiNode.TextField
+        val description = damageControls[2] as A2uiNode.TextField
         val utility = meterControls[0] as A2uiNode.ChoicePicker
         val reading = meterControls[1] as A2uiNode.TextField
-        assertEquals("Descripción", description.label)
+        assertEquals("## Detalles del daño", (damageControls[0] as A2uiNode.Text).text)
+        assertEquals("Ej. Cocina", (damageControls[1] as A2uiNode.TextField).placeholder)
+        assertEquals("Descripción del daño", description.label)
+        assertEquals("Ej. Baldosa rota junto a la puerta", description.placeholder)
         assertEquals(A2uiNode.TextField.Variant.LONG_TEXT, description.variant)
         assertEquals(listOf("water", "electricity", "gas"), utility.options.map { it.value })
         assertEquals(InputValue.Choices(emptyList()), meter.initialValues[utility.path])
         assertEquals(A2uiNode.TextField.Variant.NUMBER, reading.variant)
+        assertEquals(null, reading.placeholder)
         assertEquals("showSummary", (meterControls[2] as A2uiNode.Button).event)
     }
 
@@ -32,9 +36,10 @@ class A2uiParserTest {
         val changedMessage = damageMessage()
             .replace("Estancia", "Zona")
             .replace("\"room\", \"description\", \"submit\"", "\"description\", \"room\", \"submit\"")
-        val root = A2uiParser.parse(changedMessage).root as A2uiNode.Column
-        assertEquals(listOf("description", "room", "submit"), root.children.map { it.id })
-        assertEquals("Zona", (root.children[1] as A2uiNode.TextField).label)
+        val card = A2uiParser.parse(changedMessage).root as A2uiNode.Card
+        val controls = (card.child as A2uiNode.Column).children
+        assertEquals(listOf("title", "description", "room", "submit"), controls.map { it.id })
+        assertEquals("Zona", (controls[2] as A2uiNode.TextField).label)
     }
 
     @Test
@@ -50,8 +55,10 @@ class A2uiParserTest {
         val invalidMessages = listOf(
             message.replace("\"room\", \"description\"", "\"missing\", \"description\""),
             message.replace("\"room\", \"description\"", "\"root\", \"description\""),
+            message.replace("\"child\": \"details\"", "\"child\": \"missing\""),
             message.replace("\"id\": \"description\"", "\"id\": \"room\""),
             message.replace("\"room\": \"\"", "\"room\": 42"),
+            message.replace("\"placeholder\": \"Ej. Cocina\"", "\"placeholder\": 42"),
         )
         for (invalid in invalidMessages) {
             assertThrows(A2uiException.Invalid::class.java) { A2uiParser.parse(invalid) }

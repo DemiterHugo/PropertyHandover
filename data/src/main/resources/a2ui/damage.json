@@ -4,9 +4,11 @@
     "surfaceId": "damage",
     "catalogId": "https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json",
     "components": [
-      {"id": "root", "component": "Column", "children": ["room", "description", "submit"]},
-      {"id": "room", "component": "TextField", "label": "Estancia", "value": {"@path": "/room"}, "variant": "shortText"},
-      {"id": "description", "component": "TextField", "label": "Descripción", "value": {"@path": "/description"}, "variant": "longText"},
+      {"id": "root", "component": "Card", "child": "details"},
+      {"id": "details", "component": "Column", "children": ["title", "room", "description", "submit"]},
+      {"id": "title", "component": "Text", "text": "## Detalles del daño"},
+      {"id": "room", "component": "TextField", "label": "Estancia", "placeholder": "Ej. Cocina", "value": {"@path": "/room"}, "variant": "shortText"},
+      {"id": "description", "component": "TextField", "label": "Descripción del daño", "placeholder": "Ej. Baldosa rota junto a la puerta", "value": {"@path": "/description"}, "variant": "longText"},
       {"id": "submit", "component": "Button", "child": "submitLabel", "variant": "primary", "action": {"event": {"name": "showSummary"}}},
       {"id": "submitLabel", "component": "Text", "text": "Ver resumen"}
     ],

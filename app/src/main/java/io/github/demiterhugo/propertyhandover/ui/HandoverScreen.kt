@@ -20,6 +20,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -33,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -43,7 +46,6 @@ import io.github.demiterhugo.propertyhandover.R
 import io.github.demiterhugo.propertyhandover.data.InputValue
 import io.github.demiterhugo.propertyhandover.domain.EntryType
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun HandoverScreen(
     state: HandoverUiState,
@@ -54,7 +56,7 @@ internal fun HandoverScreen(
 ) {
     val focusManager = LocalFocusManager.current
     val selectedType = state.selectedType
-    Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.app_name)) }) }) { insets ->
+    Scaffold(topBar = { HandoverTopBar() }) { insets ->
         Box(Modifier.fillMaxSize().padding(insets).imePadding(), contentAlignment = Alignment.TopCenter) {
             Column(
                 modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth()
@@ -76,8 +78,7 @@ internal fun HandoverScreen(
                     is FormState.Ready -> key(form.surface.id) {
                         A2uiForm(
                             node = form.surface.root,
-                            values = form.values,
-                            errors = form.errors,
+                            form = form,
                             onValueChange = { path, value -> onValueChange(selectedType, path, value) },
                             onEvent = { event ->
                                 focusManager.clearFocus()
@@ -92,13 +93,35 @@ internal fun HandoverScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HandoverTopBar() {
+    val colors = MaterialTheme.colorScheme
+    Column {
+        TopAppBar(title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Surface(shape = MaterialTheme.shapes.small, color = colors.surfaceVariant) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_handover_key),
+                        contentDescription = null,
+                        modifier = Modifier.padding(6.dp),
+                        tint = colors.onSurfaceVariant,
+                    )
+                }
+                Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
+            }
+        })
+        HorizontalDivider(color = colors.outlineVariant)
+    }
+}
+
 @Composable
 private fun EntrySelector(selectedType: EntryType?, onSelect: (EntryType) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = stringResource(R.string.entry_prompt),
             modifier = Modifier.semantics { heading() },
-            style = MaterialTheme.typography.headlineSmall,
+            style = if (selectedType == null) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleSmall,
         )
         Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             for (type in EntryType.entries) {
@@ -122,9 +145,9 @@ private fun EntryOption(title: String, hint: String, selected: Boolean, onSelect
     val colors = MaterialTheme.colorScheme
     Surface(
         shape = MaterialTheme.shapes.medium,
-        color = if (selected) colors.secondaryContainer else colors.surface,
+        color = if (selected) colors.secondaryContainer else colors.surfaceContainerLow,
         contentColor = if (selected) colors.onSecondaryContainer else colors.onSurface,
-        border = if (selected) BorderStroke(2.dp, colors.primary) else BorderStroke(1.dp, colors.outlineVariant),
+        border = BorderStroke(1.dp, if (selected) colors.primary else colors.outlineVariant),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth()

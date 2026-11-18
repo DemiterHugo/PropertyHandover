@@ -8,9 +8,11 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -35,15 +37,20 @@ class HandoverFlowTest {
     fun damageShowsFieldErrorsAndKeepsItsDraftWhenSwitching() {
         choose("Daño en la vivienda")
         awaitField("Estancia")
+        compose.onNodeWithText("Detalles del daño").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Ej. Cocina").assertExists()
+        compose.onNodeWithText("Ej. Baldosa rota junto a la puerta").assertExists()
         click("Ver resumen")
-        compose.onAllNodes(hasText("Este campo es obligatorio.")).assertCountEquals(2)
+        compose.onNodeWithText("Indica la estancia.").assertExists()
+        compose.onNodeWithText("Describe el daño.").assertExists()
+        compose.onNode(field("Estancia")).assertIsFocused()
 
         enter("Estancia", "Salon")
-        enter("Descripción", "Marca en la pared")
+        enter("Descripción del daño", "Marca en la pared")
         choose("Lectura de contador")
         awaitField("Lectura")
         compose.onNodeWithText("Tipo de suministro").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Estancia").assertDoesNotExist()
+        compose.onNode(field("Estancia")).assertDoesNotExist()
         choose("Daño en la vivienda")
         click("Ver resumen")
 
@@ -51,6 +58,26 @@ class HandoverFlowTest {
             .performScrollTo().assertIsDisplayed()
         enter("Estancia", "Cocina")
         compose.onNodeWithText("Compartir resumen").assertDoesNotExist()
+    }
+
+    @Test
+    fun damageShowsTheCounterAndFocusesTheOverLimitDescription() {
+        choose("Daño en la vivienda")
+        awaitField("Estancia")
+        enter("Estancia", "Cocina")
+        enter("Descripción del daño", "a".repeat(199))
+        compose.onNodeWithText("199 / 240").assertDoesNotExist()
+        enter("Descripción del daño", "a".repeat(200))
+        compose.onNodeWithText("200 / 240").performScrollTo().assertIsDisplayed()
+        enter("Descripción del daño", "a".repeat(241))
+        compose.onNodeWithText("Reduce la descripción a 240 caracteres.").assertExists()
+        click("Ver resumen")
+        compose.onNode(field("Descripción del daño")).assertIsFocused()
+        compose.onNodeWithText("Resumen").assertDoesNotExist()
+        enter("Descripción del daño", "Baldosa rota junto a la puerta")
+        compose.onNodeWithText("Reduce la descripción a 240 caracteres.").assertDoesNotExist()
+        click("Ver resumen")
+        compose.onNodeWithText("Resumen").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -65,8 +92,8 @@ class HandoverFlowTest {
         meter.assertIsSelected()
         damage.assertIsNotSelected()
         awaitField("Lectura")
-        compose.onNode(hasSetTextAction() and hasText("Lectura")).assertIsNotFocused()
-        compose.onNodeWithText("Descripción").assertDoesNotExist()
+        compose.onNode(field("Lectura")).assertIsNotFocused()
+        compose.onNode(field("Descripción del daño")).assertDoesNotExist()
         click("Ver resumen")
         compose.onNodeWithText("Elige un tipo de suministro.").performScrollTo().assertIsDisplayed()
         click("Agua")
@@ -95,7 +122,7 @@ class HandoverFlowTest {
 
     private fun awaitField(label: String) {
         compose.waitUntil(timeoutMillis = 10_000) {
-            compose.onAllNodes(hasSetTextAction() and hasText(label)).fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodes(field(label)).fetchSemanticsNodes().isNotEmpty()
         }
     }
 
@@ -112,6 +139,8 @@ class HandoverFlowTest {
     }
 
     private fun enter(label: String, value: String) {
-        compose.onNode(hasSetTextAction() and hasText(label)).performScrollTo().performTextReplacement(value)
+        compose.onNode(field(label)).performScrollTo().performTextReplacement(value)
     }
+
+    private fun field(label: String) = hasSetTextAction() and (hasContentDescription(label) or hasText(label))
 }

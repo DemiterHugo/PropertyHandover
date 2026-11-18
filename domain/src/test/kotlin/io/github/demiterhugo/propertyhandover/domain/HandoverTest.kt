@@ -10,7 +10,7 @@ class HandoverTest {
     fun `damage requires both fields`() {
         assertEquals(
             HandoverResult.Invalid(
-                mapOf(HandoverField.ROOM to FieldError.REQUIRED, HandoverField.DESCRIPTION to FieldError.REQUIRED),
+                mapOf(HandoverField.ROOM to FieldError.ROOM_REQUIRED, HandoverField.DESCRIPTION to FieldError.DESCRIPTION_REQUIRED),
             ),
             handover.summarize(EntryType.DAMAGE, mapOf(HandoverField.ROOM to "  ")),
         )
@@ -18,6 +18,11 @@ class HandoverTest {
 
     @Test
     fun `damage caps the description and trims the summary`() {
+        val atLimit = "a".repeat(240)
+        assertEquals(
+            HandoverResult.Summary("Daño en la vivienda\nEstancia: Salón\nDescripción: $atLimit"),
+            handover.summarize(EntryType.DAMAGE, mapOf(HandoverField.ROOM to "Salón", HandoverField.DESCRIPTION to " $atLimit ")),
+        )
         assertEquals(
             HandoverResult.Invalid(mapOf(HandoverField.DESCRIPTION to FieldError.DESCRIPTION_TOO_LONG)),
             handover.summarize(EntryType.DAMAGE, mapOf(HandoverField.ROOM to "Salón", HandoverField.DESCRIPTION to "a".repeat(241))),

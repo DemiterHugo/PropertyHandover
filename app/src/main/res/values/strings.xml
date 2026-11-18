@@ -9,5 +9,6 @@
     <string name="form_unsupported">Este formulario usa una función de A2UI no admitida.</string>
     <string name="form_unavailable">No se pudo cargar este formulario.</string>
     <string name="summary_title">Resumen</string>
+    <string name="field_character_count">%1$d / %2$d</string>
     <string name="share_summary">Compartir resumen</string>
 </resources>

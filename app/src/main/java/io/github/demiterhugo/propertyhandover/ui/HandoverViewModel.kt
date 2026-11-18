@@ -8,7 +8,9 @@ import io.github.demiterhugo.propertyhandover.data.A2uiException
 import io.github.demiterhugo.propertyhandover.data.A2uiSurface
 import io.github.demiterhugo.propertyhandover.data.InputValue
 import io.github.demiterhugo.propertyhandover.data.LocalA2uiForms
+import io.github.demiterhugo.propertyhandover.domain.DAMAGE_DESCRIPTION_LIMIT
 import io.github.demiterhugo.propertyhandover.domain.EntryType
+import io.github.demiterhugo.propertyhandover.domain.FieldError
 import io.github.demiterhugo.propertyhandover.domain.Handover
 import io.github.demiterhugo.propertyhandover.domain.HandoverField
 import io.github.demiterhugo.propertyhandover.domain.HandoverResult
@@ -26,12 +28,18 @@ internal data class HandoverUiState(
     val forms: Map<EntryType, FormState> = emptyMap(),
 )
 
+internal data class TextLengthLimit(val path: String, val maximum: Int, val showFrom: Int, val error: String)
+
+internal data class FieldFocusRequest(val path: String, val attempt: Int)
+
 internal sealed interface FormState {
     data class Ready(
         val surface: A2uiSurface,
         val values: Map<String, InputValue> = surface.initialValues,
         val errors: Map<String, String> = emptyMap(),
         val summary: String? = null,
+        val lengthLimit: TextLengthLimit? = null,
+        val focusRequest: FieldFocusRequest? = null,
     ) : FormState
 
     data class Failed(val message: Int) : FormState
@@ -57,15 +65,15 @@ internal class HandoverViewModel @Inject constructor(
             val previousType = state.selectedType ?: return@update state.copy(selectedType = type)
             if (previousType == type) return@update state
             val previous = state.forms[previousType] as? FormState.Ready
-            val forms = if (previous?.summary == null) state.forms else {
-                state.forms + (previousType to previous.copy(summary = null))
+            val forms = if (previous == null) state.forms else {
+                state.forms + (previousType to previous.copy(summary = null, focusRequest = null))
             }
             state.copy(selectedType = type, forms = forms)
         }
     }
 
     fun updateValue(type: EntryType, path: String, value: InputValue) = updateForm(type) { form ->
-        form.copy(values = form.values + (path to value), errors = form.errors - path, summary = null)
+        form.copy(values = form.values + (path to value), errors = form.errors - path, summary = null, focusRequest = null)
     }
 
     fun handleEvent(type: EntryType, name: String) {
@@ -79,10 +87,16 @@ internal class HandoverViewModel @Inject constructor(
                 }
             }
             when (val result = handover.summarize(type, inputs)) {
-                is HandoverResult.Summary -> form.copy(errors = emptyMap(), summary = result.text)
+                is HandoverResult.Summary -> form.copy(errors = emptyMap(), summary = result.text, focusRequest = null)
                 is HandoverResult.Invalid -> form.copy(
                     errors = result.errors.entries.associate { (field, error) -> fields.getValue(field) to error.message },
                     summary = null,
+                    focusRequest = if (type == EntryType.DAMAGE) {
+                        FieldFocusRequest(
+                            path = fields.getValue(result.errors.keys.first()),
+                            attempt = (form.focusRequest?.attempt ?: 0) + 1,
+                        )
+                    } else null,
                 )
             }
         }
@@ -93,7 +107,7 @@ internal class HandoverViewModel @Inject constructor(
         if (!surface.initialValues.keys.containsAll(formPaths.getValue(type).values)) {
             FormState.Failed(R.string.form_invalid)
         } else {
-            FormState.Ready(surface)
+            FormState.Ready(surface, lengthLimit = if (type == EntryType.DAMAGE) damageDescriptionLimit else null)
         }
     } catch (_: A2uiException.Invalid) {
         FormState.Failed(R.string.form_invalid)
@@ -115,6 +129,12 @@ internal class HandoverViewModel @Inject constructor(
         val formPaths = mapOf(
             EntryType.DAMAGE to mapOf(HandoverField.ROOM to "/room", HandoverField.DESCRIPTION to "/description"),
             EntryType.METER to mapOf(HandoverField.UTILITY to "/utility", HandoverField.READING to "/reading"),
+        )
+        val damageDescriptionLimit = TextLengthLimit(
+            path = formPaths.getValue(EntryType.DAMAGE).getValue(HandoverField.DESCRIPTION),
+            maximum = DAMAGE_DESCRIPTION_LIMIT,
+            showFrom = 200,
+            error = FieldError.DESCRIPTION_TOO_LONG.message,
         )
     }
 }
