@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "createSurface": {
+    "surfaceId": "meter",
+    "catalogId": "https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json",
+    "components": [
+      {"id": "root", "component": "Column", "children": ["utility", "reading", "submit"]},
+      {
+        "id": "utility",
+        "component": "ChoicePicker",
+        "label": "Tipo de suministro",
+        "value": {"@path": "/utility"},
+        "variant": "mutuallyExclusive",
+        "displayStyle": "chips",
+        "options": [
+          {"label": "Agua", "value": "water"},
+          {"label": "Electricidad", "value": "electricity"},
+          {"label": "Gas", "value": "gas"}
+        ]
+      },
+      {"id": "reading", "component": "TextField", "label": "Lectura", "value": {"@path": "/reading"}, "variant": "number"},
+      {"id": "submit", "component": "Button", "child": "submitLabel", "variant": "primary", "action": {"event": {"name": "showSummary"}}},
+      {"id": "submitLabel", "component": "Text", "text": "Ver resumen"}
+    ],
+    "dataModel": {"utility": [], "reading": ""}
+  }
+}
