@@ -3,8 +3,14 @@ package io.github.demiterhugo.propertyhandover
 import android.app.Activity
 import android.app.Instrumentation
 import android.content.Intent
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -27,16 +33,18 @@ class HandoverFlowTest {
 
     @Test
     fun damageShowsFieldErrorsAndKeepsItsDraftWhenSwitching() {
-        awaitDamageForm()
+        choose("Daño en la vivienda")
+        awaitField("Estancia")
         click("Ver resumen")
         compose.onAllNodes(hasText("Este campo es obligatorio.")).assertCountEquals(2)
 
         enter("Estancia", "Salon")
         enter("Descripción", "Marca en la pared")
-        click("Lectura de contador")
-        compose.onNodeWithText("Tipo de suministro").assertIsDisplayed()
+        choose("Lectura de contador")
+        awaitField("Lectura")
+        compose.onNodeWithText("Tipo de suministro").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Estancia").assertDoesNotExist()
-        click("Daño en la vivienda")
+        choose("Daño en la vivienda")
         click("Ver resumen")
 
         compose.onNodeWithText("Daño en la vivienda\nEstancia: Salon\nDescripción: Marca en la pared")
@@ -46,16 +54,25 @@ class HandoverFlowTest {
     }
 
     @Test
-    fun meterReplacesTheDamageFieldsAndSharesTheExactSummary() {
-        awaitDamageForm()
-        click("Lectura de contador")
+    fun appStartsUnselectedAndSharesTheExactSummaryAfterChoosingMeter() {
+        val damage = option("Daño en la vivienda")
+        val meter = option("Lectura de contador")
+        damage.assertIsDisplayed().assertIsNotSelected()
+        meter.assertIsDisplayed().assertIsNotSelected()
+        compose.onAllNodes(hasSetTextAction()).assertCountEquals(0)
+
+        choose("Lectura de contador")
+        meter.assertIsSelected()
+        damage.assertIsNotSelected()
+        awaitField("Lectura")
+        compose.onNode(hasSetTextAction() and hasText("Lectura")).assertIsNotFocused()
         compose.onNodeWithText("Descripción").assertDoesNotExist()
         click("Ver resumen")
-        compose.onNodeWithText("Elige un tipo de suministro.").assertIsDisplayed()
+        compose.onNodeWithText("Elige un tipo de suministro.").performScrollTo().assertIsDisplayed()
         click("Agua")
         enter("Lectura", "-1")
         click("Ver resumen")
-        compose.onNodeWithText("Introduce una lectura igual o mayor que cero.").assertIsDisplayed()
+        compose.onNodeWithText("Introduce una lectura igual o mayor que cero.").performScrollTo().assertIsDisplayed()
         enter("Lectura", "128,4")
         click("Ver resumen")
 
@@ -76,10 +93,18 @@ class HandoverFlowTest {
         }
     }
 
-    private fun awaitDamageForm() {
+    private fun awaitField(label: String) {
         compose.waitUntil(timeoutMillis = 10_000) {
-            compose.onAllNodes(hasSetTextAction() and hasText("Estancia")).fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodes(hasSetTextAction() and hasText(label)).fetchSemanticsNodes().isNotEmpty()
         }
+    }
+
+    private fun option(title: String) = compose.onNode(
+        hasText(title) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton),
+    )
+
+    private fun choose(title: String) {
+        option(title).performScrollTo().performClick()
     }
 
     private fun click(label: String) {

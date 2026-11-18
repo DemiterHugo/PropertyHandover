@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 internal data class HandoverUiState(
-    val selectedType: EntryType = EntryType.DAMAGE,
+    val selectedType: EntryType? = null,
     val forms: Map<EntryType, FormState> = emptyMap(),
 )
 
@@ -54,10 +54,11 @@ internal class HandoverViewModel @Inject constructor(
 
     fun select(type: EntryType) {
         mutableState.update { state ->
-            if (state.selectedType == type) return@update state
-            val previous = state.forms[state.selectedType] as? FormState.Ready
-            val forms = if (previous == null) state.forms else {
-                state.forms + (state.selectedType to previous.copy(summary = null))
+            val previousType = state.selectedType ?: return@update state.copy(selectedType = type)
+            if (previousType == type) return@update state
+            val previous = state.forms[previousType] as? FormState.Ready
+            val forms = if (previous?.summary == null) state.forms else {
+                state.forms + (previousType to previous.copy(summary = null))
             }
             state.copy(selectedType = type, forms = forms)
         }

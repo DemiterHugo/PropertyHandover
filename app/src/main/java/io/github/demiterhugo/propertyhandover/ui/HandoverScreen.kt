@@ -22,7 +22,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -36,6 +35,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.demiterhugo.propertyhandover.R
 import io.github.demiterhugo.propertyhandover.data.InputValue
@@ -63,6 +65,8 @@ internal fun HandoverScreen(
                     if (type != selectedType) focusManager.clearFocus()
                     onSelectType(type)
                 }
+                if (selectedType == null) return@Column
+
                 when (val form = state.forms[selectedType]) {
                     null -> CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
                     is FormState.Failed -> Text(
@@ -89,31 +93,62 @@ internal fun HandoverScreen(
 }
 
 @Composable
-private fun EntrySelector(selectedType: EntryType, onSelect: (EntryType) -> Unit) {
-    Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(R.string.entry_prompt), style = MaterialTheme.typography.titleMedium)
-        for (type in EntryType.entries) {
-            val selected = selectedType == type
-            val label = when (type) {
-                EntryType.DAMAGE -> R.string.entry_damage
-                EntryType.METER -> R.string.entry_meter
+private fun EntrySelector(selectedType: EntryType?, onSelect: (EntryType) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = stringResource(R.string.entry_prompt),
+            modifier = Modifier.semantics { heading() },
+            style = MaterialTheme.typography.headlineSmall,
+        )
+        Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (type in EntryType.entries) {
+                val (title, hint) = when (type) {
+                    EntryType.DAMAGE -> R.string.entry_damage to R.string.entry_damage_hint
+                    EntryType.METER -> R.string.entry_meter to R.string.entry_meter_hint
+                }
+                EntryOption(
+                    title = stringResource(title),
+                    hint = stringResource(hint),
+                    selected = selectedType == type,
+                    onSelect = { onSelect(type) },
+                )
             }
-            val colors = MaterialTheme.colorScheme
-            Surface(
-                shape = MaterialTheme.shapes.medium,
-                color = if (selected) colors.secondaryContainer else colors.surface,
-                contentColor = if (selected) colors.onSecondaryContainer else colors.onSurface,
-                border = BorderStroke(1.dp, if (selected) colors.primary else colors.outlineVariant),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth()
-                        .selectable(selected, role = Role.RadioButton, onClick = { onSelect(type) })
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    RadioButton(selected = selected, onClick = null)
-                    Text(stringResource(label), style = MaterialTheme.typography.bodyLarge)
+        }
+    }
+}
+
+@Composable
+private fun EntryOption(title: String, hint: String, selected: Boolean, onSelect: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        color = if (selected) colors.secondaryContainer else colors.surface,
+        contentColor = if (selected) colors.onSecondaryContainer else colors.onSurface,
+        border = if (selected) BorderStroke(2.dp, colors.primary) else BorderStroke(1.dp, colors.outlineVariant),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth()
+                .selectable(selected, role = Role.RadioButton, onClick = onSelect)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    hint,
+                    modifier = Modifier.fillMaxWidth(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (selected) colors.onSecondaryContainer else colors.onSurfaceVariant,
+                )
+            }
+            Box(Modifier.widthIn(min = 24.dp), contentAlignment = Alignment.Center) {
+                if (selected) {
+                    Text(
+                        text = "✓",
+                        modifier = Modifier.clearAndSetSemantics {},
+                        style = MaterialTheme.typography.titleMedium,
+                    )
                 }
             }
         }
