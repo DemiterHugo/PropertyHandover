@@ -4,6 +4,7 @@ data class A2uiSurface(
     val id: String,
     val root: A2uiNode,
     val initialValues: Map<String, InputValue>,
+    val sourceMessage: String,
 )
 
 sealed interface InputValue {
@@ -15,12 +16,14 @@ sealed interface A2uiNode {
     val id: String
 
     data class Column(override val id: String, val children: List<A2uiNode>) : A2uiNode
+    data class Card(override val id: String, val child: A2uiNode) : A2uiNode
     data class Text(override val id: String, val text: String) : A2uiNode
     data class TextField(
         override val id: String,
         val label: String,
         val path: String,
         val variant: Variant,
+        val placeholder: String? = null,
     ) : A2uiNode {
         enum class Variant { SHORT_TEXT, LONG_TEXT, NUMBER }
     }

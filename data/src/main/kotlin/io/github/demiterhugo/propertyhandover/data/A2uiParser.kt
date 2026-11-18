@@ -35,7 +35,7 @@ internal object A2uiParser {
         val reader = SurfaceReader(components, surface.obj("dataModel"))
         val root = reader.readNode("root")
         if (components.isNotEmpty()) invalid("Unreachable components: ${components.keys}")
-        return A2uiSurface(surfaceId, root, reader.values.toMap())
+        return A2uiSurface(surfaceId, root, reader.values.toMap(), sourceMessage = message)
     }
 
     private class SurfaceReader(
@@ -51,6 +51,10 @@ internal object A2uiParser {
                     node.allowOnly("id", "component", "children")
                     A2uiNode.Column(id, node.array("children").map { readNode(it.asString("child ID")) })
                 }
+                "Card" -> {
+                    node.allowOnly("id", "component", "child")
+                    A2uiNode.Card(id, readNode(node.string("child")))
+                }
                 "Text" -> {
                     node.allowOnly("id", "component", "text")
                     A2uiNode.Text(id, node.string("text"))
@@ -63,7 +67,7 @@ internal object A2uiParser {
         }
 
         private fun readTextField(id: String, node: JsonObject): A2uiNode.TextField {
-            node.allowOnly("id", "component", "label", "value", "variant")
+            node.allowOnly("id", "component", "label", "value", "variant", "placeholder")
             val path = node.binding()
             val variant = when (val value = node.get("variant")?.asString("variant") ?: "shortText") {
                 "shortText" -> A2uiNode.TextField.Variant.SHORT_TEXT
@@ -72,7 +76,7 @@ internal object A2uiParser {
                 else -> unsupported("TextField variant: $value")
             }
             store(path, InputValue.Text(model.string(path.drop(1))))
-            return A2uiNode.TextField(id, node.string("label"), path, variant)
+            return A2uiNode.TextField(id, node.string("label"), path, variant, node.get("placeholder")?.asString("placeholder"))
         }
 
         private fun readChoicePicker(id: String, node: JsonObject): A2uiNode.ChoicePicker {
