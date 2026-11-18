@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">Property Handover</string>
+    <string name="entry_prompt">¿Qué quieres registrar?</string>
+    <string name="entry_damage">Daño en la vivienda</string>
+    <string name="entry_meter">Lectura de contador</string>
+    <string name="form_invalid">El mensaje de este formulario no es válido.</string>
+    <string name="form_unsupported">Este formulario usa una función de A2UI no admitida.</string>
+    <string name="form_unavailable">No se pudo cargar este formulario.</string>
+    <string name="summary_title">Resumen</string>
+    <string name="share_summary">Compartir resumen</string>
 </resources>
