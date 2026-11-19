@@ -3,8 +3,16 @@ package io.github.demiterhugo.propertyhandover
 import android.app.Activity
 import android.app.Instrumentation
 import android.content.Intent
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -27,16 +35,23 @@ class HandoverFlowTest {
 
     @Test
     fun damageShowsFieldErrorsAndKeepsItsDraftWhenSwitching() {
-        awaitDamageForm()
+        choose("Daño en la vivienda")
+        awaitField("Estancia")
+        compose.onNodeWithText("Detalles del daño").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Ej. Cocina").assertExists()
+        compose.onNodeWithText("Ej. Baldosa rota junto a la puerta").assertExists()
         click("Ver resumen")
-        compose.onAllNodes(hasText("Este campo es obligatorio.")).assertCountEquals(2)
+        compose.onNodeWithText("Indica la estancia.").assertExists()
+        compose.onNodeWithText("Describe el daño.").assertExists()
+        compose.onNode(field("Estancia")).assertIsFocused()
 
         enter("Estancia", "Salon")
-        enter("Descripción", "Marca en la pared")
-        click("Lectura de contador")
+        enter("Descripción del daño", "Marca en la pared")
+        choose("Lectura de contador")
+        awaitField("Lectura")
         compose.onNodeWithText("Tipo de suministro").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Estancia").assertDoesNotExist()
-        click("Daño en la vivienda")
+        compose.onNode(field("Estancia")).assertDoesNotExist()
+        choose("Daño en la vivienda")
         click("Ver resumen")
 
         compose.onNodeWithText("Daño en la vivienda\nEstancia: Salon\nDescripción: Marca en la pared")
@@ -46,10 +61,58 @@ class HandoverFlowTest {
     }
 
     @Test
-    fun meterReplacesTheDamageFieldsAndSharesTheExactSummary() {
-        awaitDamageForm()
-        click("Lectura de contador")
-        compose.onNodeWithText("Descripción").assertDoesNotExist()
+    fun damageShowsTheCounterAndFocusesTheOverLimitDescription() {
+        choose("Daño en la vivienda")
+        awaitField("Estancia")
+        enter("Estancia", "Cocina")
+        enter("Descripción del daño", "a".repeat(199))
+        compose.onNodeWithText("199 / 240").assertDoesNotExist()
+        enter("Descripción del daño", "a".repeat(200))
+        compose.onNodeWithText("200 / 240").performScrollTo().assertIsDisplayed()
+        enter("Descripción del daño", "a".repeat(241))
+        compose.onNodeWithText("Reduce la descripción a 240 caracteres.").assertExists()
+        click("Ver resumen")
+        compose.onNode(field("Descripción del daño")).assertIsFocused()
+        compose.onNodeWithText("Resumen").assertDoesNotExist()
+        enter("Descripción del daño", "Baldosa rota junto a la puerta")
+        compose.onNodeWithText("Reduce la descripción a 240 caracteres.").assertDoesNotExist()
+        click("Ver resumen")
+        compose.onNodeWithText("Resumen").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun sourceViewerShowsTheMessageForTheSelectedForm() {
+        compose.onNodeWithText("Cada opción carga un formulario A2UI que se muestra con Jetpack Compose.")
+            .assertIsDisplayed()
+        choose("Daño en la vivienda")
+        awaitField("Estancia")
+        click("Ver mensaje A2UI")
+        compose.onNodeWithText("\"surfaceId\": \"damage\"", substring = true).assertExists()
+        compose.onNodeWithText("\"@path\": \"/room\"", substring = true).assertExists()
+        compose.onNodeWithText("Cerrar").performClick()
+
+        choose("Lectura de contador")
+        awaitField("Lectura")
+        click("Ver mensaje A2UI")
+        compose.onNodeWithText("\"surfaceId\": \"meter\"", substring = true).assertExists()
+        compose.onNodeWithText("\"component\": \"ChoicePicker\"", substring = true).assertExists()
+        compose.onNodeWithText("\"@path\": \"/room\"", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun appStartsUnselectedAndSharesTheExactSummaryAfterChoosingMeter() {
+        val damage = option("Daño en la vivienda")
+        val meter = option("Lectura de contador")
+        damage.assertIsDisplayed().assertIsNotSelected()
+        meter.assertIsDisplayed().assertIsNotSelected()
+        compose.onAllNodes(hasSetTextAction()).assertCountEquals(0)
+
+        choose("Lectura de contador")
+        meter.assertIsSelected()
+        damage.assertIsNotSelected()
+        awaitField("Lectura")
+        compose.onNode(field("Lectura")).assertIsNotFocused()
+        compose.onNode(field("Descripción del daño")).assertDoesNotExist()
         click("Ver resumen")
         compose.onNodeWithText("Elige un tipo de suministro.").performScrollTo().assertIsDisplayed()
         click("Agua")
@@ -76,10 +139,18 @@ class HandoverFlowTest {
         }
     }
 
-    private fun awaitDamageForm() {
+    private fun awaitField(label: String) {
         compose.waitUntil(timeoutMillis = 10_000) {
-            compose.onAllNodes(hasSetTextAction() and hasText("Estancia")).fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodes(field(label)).fetchSemanticsNodes().isNotEmpty()
         }
+    }
+
+    private fun option(title: String) = compose.onNode(
+        hasText(title) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton),
+    )
+
+    private fun choose(title: String) {
+        option(title).performScrollTo().performClick()
     }
 
     private fun click(label: String) {
@@ -87,6 +158,8 @@ class HandoverFlowTest {
     }
 
     private fun enter(label: String, value: String) {
-        compose.onNode(hasSetTextAction() and hasText(label)).performScrollTo().performTextReplacement(value)
+        compose.onNode(field(label)).performScrollTo().performTextReplacement(value)
     }
+
+    private fun field(label: String) = hasSetTextAction() and (hasContentDescription(label) or hasText(label))
 }

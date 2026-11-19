@@ -4,9 +4,13 @@ enum class EntryType { DAMAGE, METER }
 
 enum class HandoverField { ROOM, DESCRIPTION, UTILITY, READING }
 
+const val DAMAGE_DESCRIPTION_LIMIT = 240
+
 enum class FieldError(val message: String) {
     REQUIRED("Este campo es obligatorio."),
-    DESCRIPTION_TOO_LONG("La descripción admite hasta 240 caracteres."),
+    ROOM_REQUIRED("Indica la estancia."),
+    DESCRIPTION_REQUIRED("Describe el daño."),
+    DESCRIPTION_TOO_LONG("Reduce la descripción a $DAMAGE_DESCRIPTION_LIMIT caracteres."),
     INVALID_UTILITY("Elige un tipo de suministro."),
     INVALID_READING("Introduce una lectura igual o mayor que cero."),
 }
@@ -30,10 +34,10 @@ class Handover {
 
     private fun summarizeDamage(room: String, description: String): HandoverResult {
         val errors = buildMap {
-            if (room.isBlank()) put(HandoverField.ROOM, FieldError.REQUIRED)
+            if (room.isBlank()) put(HandoverField.ROOM, FieldError.ROOM_REQUIRED)
             when {
-                description.isBlank() -> put(HandoverField.DESCRIPTION, FieldError.REQUIRED)
-                description.length > 240 -> put(HandoverField.DESCRIPTION, FieldError.DESCRIPTION_TOO_LONG)
+                description.isBlank() -> put(HandoverField.DESCRIPTION, FieldError.DESCRIPTION_REQUIRED)
+                description.length > DAMAGE_DESCRIPTION_LIMIT -> put(HandoverField.DESCRIPTION, FieldError.DESCRIPTION_TOO_LONG)
             }
         }
         if (errors.isNotEmpty()) return HandoverResult.Invalid(errors)
