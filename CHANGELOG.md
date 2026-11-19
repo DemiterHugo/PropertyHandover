@@ -10,3 +10,4 @@
 - Use a slate-blue brand header and form-specific icons to identify the app and entry types.
 - Enter damage details with example placeholders, inline errors, and a description character counter.
 - Inspect the local A2UI message used to render each form directly in the app.
+- Fix a release-only startup crash caused by scoped R8 optimization.
