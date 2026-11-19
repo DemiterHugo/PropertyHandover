@@ -1,0 +1,140 @@
+package io.github.demiterhugo.propertyhandover.ui
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.demiterhugo.propertyhandover.R
+import io.github.demiterhugo.propertyhandover.data.A2uiException
+import io.github.demiterhugo.propertyhandover.data.A2uiSurface
+import io.github.demiterhugo.propertyhandover.data.InputValue
+import io.github.demiterhugo.propertyhandover.data.LocalA2uiForms
+import io.github.demiterhugo.propertyhandover.domain.DAMAGE_DESCRIPTION_LIMIT
+import io.github.demiterhugo.propertyhandover.domain.EntryType
+import io.github.demiterhugo.propertyhandover.domain.FieldError
+import io.github.demiterhugo.propertyhandover.domain.Handover
+import io.github.demiterhugo.propertyhandover.domain.HandoverField
+import io.github.demiterhugo.propertyhandover.domain.HandoverResult
+import java.io.IOException
+import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+internal data class HandoverUiState(
+    val selectedType: EntryType? = null,
+    val forms: Map<EntryType, FormState> = emptyMap(),
+)
+
+internal data class TextLengthLimit(val path: String, val maximum: Int, val showFrom: Int, val error: String)
+
+internal data class FieldFocusRequest(val path: String, val attempt: Int)
+
+internal sealed interface FormState {
+    data class Ready(
+        val surface: A2uiSurface,
+        val values: Map<String, InputValue> = surface.initialValues,
+        val errors: Map<String, String> = emptyMap(),
+        val summary: String? = null,
+        val lengthLimit: TextLengthLimit? = null,
+        val focusRequest: FieldFocusRequest? = null,
+    ) : FormState
+
+    data class Failed(val message: Int) : FormState
+}
+
+@HiltViewModel
+internal class HandoverViewModel @Inject constructor(
+    private val localForms: LocalA2uiForms,
+    private val handover: Handover,
+) : ViewModel() {
+    private val mutableState = MutableStateFlow(HandoverUiState())
+    val state = mutableState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            val forms = withContext(Dispatchers.IO) { EntryType.entries.associateWith(::loadForm) }
+            mutableState.update { it.copy(forms = forms) }
+        }
+    }
+
+    fun select(type: EntryType) {
+        mutableState.update { state ->
+            val previousType = state.selectedType ?: return@update state.copy(selectedType = type)
+            if (previousType == type) return@update state
+            val previous = state.forms[previousType] as? FormState.Ready
+            val forms = if (previous == null) state.forms else {
+                state.forms + (previousType to previous.copy(summary = null, focusRequest = null))
+            }
+            state.copy(selectedType = type, forms = forms)
+        }
+    }
+
+    fun updateValue(type: EntryType, path: String, value: InputValue) = updateForm(type) { form ->
+        form.copy(values = form.values + (path to value), errors = form.errors - path, summary = null, focusRequest = null)
+    }
+
+    fun handleEvent(type: EntryType, name: String) {
+        if (name != "showSummary") return
+        updateForm(type) { form ->
+            val fields = formPaths.getValue(type)
+            val inputs = fields.mapValues { (_, path) ->
+                when (val value = form.values.getValue(path)) {
+                    is InputValue.Text -> value.value
+                    is InputValue.Choices -> value.values.singleOrNull().orEmpty()
+                }
+            }
+            when (val result = handover.summarize(type, inputs)) {
+                is HandoverResult.Summary -> form.copy(errors = emptyMap(), summary = result.text, focusRequest = null)
+                is HandoverResult.Invalid -> form.copy(
+                    errors = result.errors.entries.associate { (field, error) -> fields.getValue(field) to error.message },
+                    summary = null,
+                    focusRequest = if (type == EntryType.DAMAGE) {
+                        FieldFocusRequest(
+                            path = fields.getValue(result.errors.keys.first()),
+                            attempt = (form.focusRequest?.attempt ?: 0) + 1,
+                        )
+                    } else null,
+                )
+            }
+        }
+    }
+
+    private fun loadForm(type: EntryType): FormState = try {
+        val surface = localForms.load(type)
+        if (!surface.initialValues.keys.containsAll(formPaths.getValue(type).values)) {
+            FormState.Failed(R.string.form_invalid)
+        } else {
+            FormState.Ready(surface, lengthLimit = if (type == EntryType.DAMAGE) damageDescriptionLimit else null)
+        }
+    } catch (_: A2uiException.Invalid) {
+        FormState.Failed(R.string.form_invalid)
+    } catch (_: A2uiException.Unsupported) {
+        FormState.Failed(R.string.form_unsupported)
+    } catch (_: IOException) {
+        FormState.Failed(R.string.form_unavailable)
+    }
+
+    private fun updateForm(type: EntryType, transform: (FormState.Ready) -> FormState.Ready) {
+        mutableState.update { state ->
+            val form = state.forms[type] as? FormState.Ready
+            if (type != state.selectedType || form == null) return@update state
+            state.copy(forms = state.forms + (type to transform(form)))
+        }
+    }
+
+    private companion object {
+        val formPaths = mapOf(
+            EntryType.DAMAGE to mapOf(HandoverField.ROOM to "/room", HandoverField.DESCRIPTION to "/description"),
+            EntryType.METER to mapOf(HandoverField.UTILITY to "/utility", HandoverField.READING to "/reading"),
+        )
+        val damageDescriptionLimit = TextLengthLimit(
+            path = formPaths.getValue(EntryType.DAMAGE).getValue(HandoverField.DESCRIPTION),
+            maximum = DAMAGE_DESCRIPTION_LIMIT,
+            showFrom = 200,
+            error = FieldError.DESCRIPTION_TOO_LONG.message,
+        )
+    }
+}
