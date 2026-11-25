@@ -20,6 +20,18 @@ sealed interface HandoverResult {
     data class Summary(val text: String) : HandoverResult
 }
 
+data class HandoverReport(val entries: Map<EntryType, HandoverResult.Summary> = emptyMap()) {
+    fun withEntry(type: EntryType, summary: HandoverResult.Summary) = copy(entries = entries + (type to summary))
+
+    fun withoutEntry(type: EntryType) = copy(entries = entries - type)
+
+    fun shareText(title: String): String? {
+        val summaries = EntryType.entries.mapNotNull { entries[it]?.text }
+        if (summaries.isEmpty()) return null
+        return (listOf(title) + summaries).joinToString("\n\n")
+    }
+}
+
 class Handover {
     fun summarize(type: EntryType, values: Map<HandoverField, String>): HandoverResult = when (type) {
         EntryType.DAMAGE -> summarizeDamage(
