@@ -13,6 +13,7 @@ import io.github.demiterhugo.propertyhandover.domain.EntryType
 import io.github.demiterhugo.propertyhandover.domain.FieldError
 import io.github.demiterhugo.propertyhandover.domain.Handover
 import io.github.demiterhugo.propertyhandover.domain.HandoverField
+import io.github.demiterhugo.propertyhandover.domain.HandoverReport
 import io.github.demiterhugo.propertyhandover.domain.HandoverResult
 import java.io.IOException
 import javax.inject.Inject
@@ -26,6 +27,7 @@ import kotlinx.coroutines.withContext
 internal data class HandoverUiState(
     val selectedType: EntryType? = null,
     val forms: Map<EntryType, FormState> = emptyMap(),
+    val report: HandoverReport = HandoverReport(),
 )
 
 internal data class TextLengthLimit(val path: String, val maximum: Int, val showFrom: Int, val error: String)
@@ -37,7 +39,7 @@ internal sealed interface FormState {
         val surface: A2uiSurface,
         val values: Map<String, InputValue> = surface.initialValues,
         val errors: Map<String, String> = emptyMap(),
-        val summary: String? = null,
+        val saved: Boolean = false,
         val lengthLimit: TextLengthLimit? = null,
         val focusRequest: FieldFocusRequest? = null,
     ) : FormState
@@ -66,19 +68,26 @@ internal class HandoverViewModel @Inject constructor(
             if (previousType == type) return@update state
             val previous = state.forms[previousType] as? FormState.Ready
             val forms = if (previous == null) state.forms else {
-                state.forms + (previousType to previous.copy(summary = null, focusRequest = null))
+                state.forms + (previousType to previous.copy(focusRequest = null))
             }
             state.copy(selectedType = type, forms = forms)
         }
     }
 
     fun updateValue(type: EntryType, path: String, value: InputValue) = updateForm(type) { form ->
-        form.copy(values = form.values + (path to value), errors = form.errors - path, summary = null, focusRequest = null)
+        if (form.values[path] == value) form else form.copy(
+            values = form.values + (path to value),
+            errors = form.errors - path,
+            saved = false,
+            focusRequest = null,
+        )
     }
 
     fun handleEvent(type: EntryType, name: String) {
-        if (name != "showSummary") return
-        updateForm(type) { form ->
+        if (name != "saveToReport") return
+        mutableState.update { state ->
+            val form = state.forms[type] as? FormState.Ready
+            if (type != state.selectedType || form == null) return@update state
             val fields = formPaths.getValue(type)
             val inputs = fields.mapValues { (_, path) ->
                 when (val value = form.values.getValue(path)) {
@@ -87,18 +96,34 @@ internal class HandoverViewModel @Inject constructor(
                 }
             }
             when (val result = handover.summarize(type, inputs)) {
-                is HandoverResult.Summary -> form.copy(errors = emptyMap(), summary = result.text, focusRequest = null)
-                is HandoverResult.Invalid -> form.copy(
-                    errors = result.errors.entries.associate { (field, error) -> fields.getValue(field) to error.message },
-                    summary = null,
-                    focusRequest = if (type == EntryType.DAMAGE) {
+                is HandoverResult.Summary -> state.copy(
+                    forms = state.forms + (type to form.copy(errors = emptyMap(), saved = true, focusRequest = null)),
+                    report = state.report.withEntry(type, result),
+                )
+                is HandoverResult.Invalid -> {
+                    val focus = if (type == EntryType.DAMAGE) {
                         FieldFocusRequest(
                             path = fields.getValue(result.errors.keys.first()),
                             attempt = (form.focusRequest?.attempt ?: 0) + 1,
                         )
-                    } else null,
-                )
+                    } else null
+                    val updated = form.copy(
+                        errors = result.errors.entries.associate { (field, error) -> fields.getValue(field) to error.message },
+                        focusRequest = focus,
+                    )
+                    state.copy(forms = state.forms + (type to updated))
+                }
             }
+        }
+    }
+
+    fun removeEntry(type: EntryType) {
+        mutableState.update { state ->
+            val form = state.forms[type] as? FormState.Ready
+            state.copy(
+                forms = if (form == null) state.forms else state.forms + (type to form.copy(saved = false)),
+                report = state.report.withoutEntry(type),
+            )
         }
     }
 

@@ -1,6 +1,6 @@
 # Property Handover
 
-Property Handover is a small Android demo for a key handover. Record damage to a room or a utility meter reading, review a short summary, and share it as plain text with Android's Sharesheet. The app runs offline. Its Spanish UI uses bundled example forms and keeps drafts in memory during the session.
+Property Handover is an offline Android demo for a key handover. Save a damage entry and a utility meter reading to one report, review them together, and share the report as plain text with Android's Sharesheet. The Spanish UI uses bundled A2UI forms and keeps one entry of each type in memory for the current session.
 
 ## Run it
 
@@ -18,7 +18,7 @@ The installable debug APK is `app/build/outputs/apk/debug/app-debug.apk`. To run
 
 The app bundles two [A2UI 1.0](https://github.com/a2ui-project/a2ui/blob/main/specification/v1_0/docs/a2ui_protocol.md) messages, [damage.json](data/src/main/resources/a2ui/damage.json) and [meter.json](data/src/main/resources/a2ui/meter.json). Each message uses one `createSurface` with inline `components` and `dataModel`. The catalog identifier selects this renderer's subset of the [Basic Catalog](https://github.com/a2ui-project/a2ui/blob/main/catalogs/basic/v1/catalog.json) locally.
 
-The app starts with neither form selected. Choosing an entry type loads a different component tree into the same Compose renderer. Draft values are kept when switching forms. Tap **Ver mensaje A2UI** below either form to inspect the bundled JSON used by the renderer. This viewer shows the original message, including its empty initial values.
+The app starts with neither form selected. Choosing an entry type loads a different component tree into the same Compose renderer. Draft values are kept when switching forms. Open **Cómo se genera** above either form to see which A2UI component defines each input. The panel follows the selected form. **Ver JSON completo** shows the original bundled message and its initial values.
 
 Edit a label or reorder the IDs in the `details` column, then rebuild to see the change. The required field paths are the contract with the corresponding domain rules.
 
@@ -28,18 +28,20 @@ Edit a label or reorder the IDs in the `details` column, then rebuild to see the
 | `Card` | A single child component |
 | `Text` | Literal text, with a single-line `## ` prefix rendered as a heading |
 | `TextField` | Literal label, optional literal placeholder, `shortText`, `longText`, or `number`, and a binding to a string |
-| `ChoicePicker` | `mutuallyExclusive` chips with static options and a binding to a string array |
-| `Button` | Primary button with a `Text` child and the local `showSummary` event |
+| `ChoicePicker` | `mutuallyExclusive` options bound to a string array. `chips` renders filter chips and `checkbox` renders a single-choice radio list. |
+| `Button` | Primary button with a `Text` child. The local `saveToReport` event saves a valid entry. |
 
-Bindings use `@path` with a single top-level key. The demo loads complete local surfaces. Its parser rejects malformed messages and unsupported components before rendering, and the user can still switch to the other form. Business validation runs when the summary is requested. Damage descriptions have a 240-character limit, with a counter starting at 200 and focus moving to the first invalid damage field on submission.
+Bindings use `@path` with a single top-level key. The demo loads complete local surfaces. Its parser rejects malformed messages and unsupported components before rendering, and the user can still switch to the other form. Business validation runs when an entry is saved. Damage descriptions have a 240-character limit, with a counter and progress bar starting at 200 and focus moving to the first invalid damage field on submission. Editing a draft updates the report when the entry is saved again.
 
 - `app` contains the Compose renderer, the StateFlow ViewModel, Hilt wiring, and Android sharing.
 - `data` loads and parses the JSON resources on the JVM.
-- `domain` contains the Kotlin validation rules and summary formatting.
+- `domain` contains the Kotlin validation rules and report formatting.
 
 ## Try the demo
 
-Choose **Daño en la vivienda** and show **Estancia** and **Descripción del daño**. Switch to **Lectura de contador**, select **Agua**, and enter the fictional reading **128,4**. Tap **Ver resumen** and **Compartir resumen** to open the Android Sharesheet.
+1. Choose **Daño en la vivienda** and open **Cómo se genera**. Enter **Cocina** and **Baldosa rota**, then tap **Guardar en el acta**.
+2. Switch to **Lectura de contador** and show how the fields and the A2UI panel change. Select **Agua**, enter the fictional reading **128,4**, and tap **Guardar en el acta**.
+3. Open **Ver acta · 2/2** to review both entries, then tap **Compartir acta** to open the Android Sharesheet.
 
 ## Release build and license
 

@@ -10,12 +10,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,10 +32,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,38 +75,28 @@ internal fun A2uiForm(
         }
         is A2uiNode.Text -> {
             if (node.text.startsWith("## ") && '\n' !in node.text) {
-                Text(
-                    text = node.text.removePrefix("## "),
-                    modifier = Modifier.semantics { heading() },
-                    fontFamily = FormHeadingFont,
-                    fontSize = 30.sp,
-                    lineHeight = 35.sp,
-                )
+                val colors = MaterialTheme.colorScheme
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    color = colors.primaryContainer,
+                    contentColor = colors.onPrimaryContainer,
+                ) {
+                    Text(
+                        text = node.text.removePrefix("## "),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).semantics { heading() },
+                        fontFamily = FormHeadingFont,
+                        fontSize = 30.sp,
+                        lineHeight = 35.sp,
+                    )
+                }
             } else Text(node.text)
         }
         is A2uiNode.TextField -> A2uiTextField(node, form) { value ->
             onValueChange(node.path, InputValue.Text(value))
         }
-        is A2uiNode.ChoicePicker -> {
-            val selected = (form.values[node.path] as InputValue.Choices).values
-            Column {
-                Text(node.label, style = MaterialTheme.typography.titleSmall)
-                FlowRow(
-                    modifier = Modifier.selectableGroup(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    for (option in node.options) {
-                        FilterChip(
-                            selected = option.value in selected,
-                            onClick = { onValueChange(node.path, InputValue.Choices(listOf(option.value))) },
-                            label = { Text(option.label) },
-                        )
-                    }
-                }
-                form.errors[node.path]?.let {
-                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                }
-            }
+        is A2uiNode.ChoicePicker -> A2uiChoicePicker(node, form) { value ->
+            onValueChange(node.path, InputValue.Choices(listOf(value)))
         }
         is A2uiNode.Button -> Button(
             onClick = { onEvent(node.event) },
@@ -113,6 +111,58 @@ internal fun A2uiForm(
 }
 
 @Composable
+private fun A2uiChoicePicker(
+    node: A2uiNode.ChoicePicker,
+    form: FormState.Ready,
+    onSelect: (String) -> Unit,
+) {
+    val selected = (form.values[node.path] as InputValue.Choices).values.singleOrNull()
+    val colors = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(node.label, style = MaterialTheme.typography.titleSmall)
+        when (node.displayStyle) {
+            A2uiNode.ChoicePicker.DisplayStyle.CHIPS -> FlowRow(
+                modifier = Modifier.selectableGroup(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                for (option in node.options) {
+                    FilterChip(
+                        selected = option.value == selected,
+                        onClick = { onSelect(option.value) },
+                        label = { Text(option.label) },
+                    )
+                }
+            }
+            A2uiNode.ChoicePicker.DisplayStyle.CHECKBOX -> Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+                color = colors.surfaceContainerLow,
+                border = BorderStroke(1.dp, colors.outlineVariant),
+            ) {
+                Column(Modifier.selectableGroup()) {
+                    node.options.forEachIndexed { index, option ->
+                        if (index > 0) HorizontalDivider(color = colors.outlineVariant)
+                        val isSelected = option.value == selected
+                        ListItem(
+                            headlineContent = { Text(option.label) },
+                            trailingContent = { RadioButton(selected = isSelected, onClick = null) },
+                            modifier = Modifier.selectable(isSelected, role = Role.RadioButton) { onSelect(option.value) },
+                            colors = ListItemDefaults.colors(
+                                containerColor = if (isSelected) colors.primaryContainer else colors.surfaceContainerLow,
+                                headlineColor = if (isSelected) colors.onPrimaryContainer else colors.onSurface,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+        form.errors[node.path]?.let {
+            Text(it, color = colors.error, style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable
 private fun A2uiTextField(node: A2uiNode.TextField, form: FormState.Ready, onValueChange: (String) -> Unit) {
     val value = (form.values[node.path] as InputValue.Text).value
     val limit = form.lengthLimit?.takeIf { it.path == node.path }
@@ -121,6 +171,7 @@ private fun A2uiTextField(node: A2uiNode.TextField, form: FormState.Ready, onVal
     val showCount = limit != null && length >= limit.showFrom
     val error = if (overLimit) limit.error else form.errors[node.path]
     val longText = node.variant == A2uiNode.TextField.Variant.LONG_TEXT
+    val numeric = node.variant == A2uiNode.TextField.Variant.NUMBER
     val example = node.placeholder
     val colors = MaterialTheme.colorScheme
     val focus = remember { FocusRequester() }
@@ -151,15 +202,28 @@ private fun A2uiTextField(node: A2uiNode.TextField, form: FormState.Ready, onVal
             },
             label = if (example == null) { { Text(node.label) } } else null,
             placeholder = example?.let { { Text(it) } },
+            textStyle = if (numeric) {
+                MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Monospace)
+            } else MaterialTheme.typography.bodyLarge,
             isError = error != null,
             supportingText = if (error != null || showCount) {
                 {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(error.orEmpty(), Modifier.weight(1f), color = colors.error)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(error.orEmpty(), Modifier.weight(1f), color = colors.error)
+                            if (showCount) {
+                                Text(
+                                    stringResource(R.string.field_character_count, length, limit.maximum),
+                                    color = if (overLimit) colors.error else colors.onSurfaceVariant,
+                                )
+                            }
+                        }
                         if (showCount) {
-                            Text(
-                                stringResource(R.string.field_character_count, length, limit.maximum),
-                                color = if (overLimit) colors.error else colors.onSurfaceVariant,
+                            LinearProgressIndicator(
+                                progress = { (length.toFloat() / limit.maximum).coerceAtMost(1f) },
+                                modifier = Modifier.fillMaxWidth().clearAndSetSemantics {},
+                                color = if (overLimit) colors.error else colors.primary,
+                                trackColor = colors.primaryContainer,
                             )
                         }
                     }
@@ -169,7 +233,7 @@ private fun A2uiTextField(node: A2uiNode.TextField, form: FormState.Ready, onVal
             minLines = if (longText) 3 else 1,
             maxLines = if (longText) 5 else 1,
             keyboardOptions = KeyboardOptions(
-                keyboardType = if (node.variant == A2uiNode.TextField.Variant.NUMBER) {
+                keyboardType = if (numeric) {
                     KeyboardType.Decimal
                 } else {
                     KeyboardType.Text

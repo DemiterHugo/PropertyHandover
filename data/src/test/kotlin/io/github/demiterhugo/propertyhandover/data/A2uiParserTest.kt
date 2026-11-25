@@ -26,10 +26,22 @@ class A2uiParserTest {
         assertEquals("Ej. Baldosa rota junto a la puerta", description.placeholder)
         assertEquals(A2uiNode.TextField.Variant.LONG_TEXT, description.variant)
         assertEquals(listOf("water", "electricity", "gas"), utility.options.map { it.value })
+        assertEquals(A2uiNode.ChoicePicker.DisplayStyle.CHECKBOX, utility.displayStyle)
         assertEquals(InputValue.Choices(emptyList()), meter.initialValues[utility.path])
         assertEquals(A2uiNode.TextField.Variant.NUMBER, reading.variant)
-        assertEquals(null, reading.placeholder)
-        assertEquals("showSummary", (meterControls[3] as A2uiNode.Button).event)
+        assertEquals("Ej. 128,4", reading.placeholder)
+        assertEquals("saveToReport", (meterControls[3] as A2uiNode.Button).event)
+    }
+
+    @Test
+    fun `choice picker display style is read from the message`() {
+        val meter = LocalA2uiForms().load(EntryType.METER)
+        val chips = A2uiParser.parse(meter.sourceMessage.replace("\"checkbox\"", "\"chips\""))
+        val controls = ((chips.root as A2uiNode.Card).child as A2uiNode.Column).children
+        assertEquals(A2uiNode.ChoicePicker.DisplayStyle.CHIPS, (controls[1] as A2uiNode.ChoicePicker).displayStyle)
+        assertThrows(A2uiException.Unsupported::class.java) {
+            A2uiParser.parse(meter.sourceMessage.replace("\"checkbox\"", "\"unknown\""))
+        }
     }
 
     @Test

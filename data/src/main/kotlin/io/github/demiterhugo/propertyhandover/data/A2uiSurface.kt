@@ -33,7 +33,9 @@ sealed interface A2uiNode {
         val label: String,
         val path: String,
         val options: List<Option>,
+        val displayStyle: DisplayStyle,
     ) : A2uiNode {
+        enum class DisplayStyle { CHIPS, CHECKBOX }
         data class Option(val label: String, val value: String)
     }
 

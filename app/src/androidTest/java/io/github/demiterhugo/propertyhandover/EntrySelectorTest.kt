@@ -32,6 +32,7 @@ class EntrySelectorTest {
                         onSelectType = {},
                         onValueChange = { _, _, _ -> },
                         onEvent = { _, _ -> },
+                        onRemoveEntry = {},
                         onShare = {},
                     )
                 }
