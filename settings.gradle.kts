@@ -24,4 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Property Handover"
 include(":app")
- 
+include(":domain", ":data")

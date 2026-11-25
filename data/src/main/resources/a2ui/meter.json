@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "createSurface": {
+    "surfaceId": "meter",
+    "catalogId": "https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json",
+    "components": [
+      {"id": "root", "component": "Card", "child": "details"},
+      {"id": "details", "component": "Column", "children": ["title", "utility", "reading", "submit"]},
+      {"id": "title", "component": "Text", "text": "## Datos del contador"},
+      {
+        "id": "utility",
+        "component": "ChoicePicker",
+        "label": "Tipo de suministro",
+        "value": {"@path": "/utility"},
+        "variant": "mutuallyExclusive",
+        "displayStyle": "checkbox",
+        "options": [
+          {"label": "Agua", "value": "water"},
+          {"label": "Electricidad", "value": "electricity"},
+          {"label": "Gas", "value": "gas"}
+        ]
+      },
+      {"id": "reading", "component": "TextField", "label": "Lectura", "placeholder": "Ej. 128,4", "value": {"@path": "/reading"}, "variant": "number"},
+      {"id": "submit", "component": "Button", "child": "submitLabel", "variant": "primary", "action": {"event": {"name": "saveToReport"}}},
+      {"id": "submitLabel", "component": "Text", "text": "Guardar en el acta"}
+    ],
+    "dataModel": {"utility": [], "reading": ""}
+  }
+}
