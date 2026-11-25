@@ -81,22 +81,32 @@ class HandoverFlowTest {
     }
 
     @Test
-    fun sourceViewerShowsTheMessageForTheSelectedForm() {
+    fun expandedInspectorFollowsTheSelectedFormAndShowsItsSource() {
         compose.onNodeWithText("Cada opción carga un formulario A2UI que se muestra con Jetpack Compose.")
             .assertIsDisplayed()
         choose("Daño en la vivienda")
         awaitField("Estancia")
-        click("Ver mensaje A2UI")
+        compose.onNodeWithText("Estancia → TextField").assertDoesNotExist()
+        click("Cómo se genera")
+        compose.onNodeWithText("Estancia → TextField").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Descripción del daño → TextField").performScrollTo().assertIsDisplayed()
+        click("Ver JSON completo")
         compose.onNodeWithText("\"surfaceId\": \"damage\"", substring = true).assertExists()
         compose.onNodeWithText("\"@path\": \"/room\"", substring = true).assertExists()
         compose.onNodeWithText("Cerrar").performClick()
 
         choose("Lectura de contador")
         awaitField("Lectura")
-        click("Ver mensaje A2UI")
+        compose.onNodeWithText("Estancia → TextField").assertDoesNotExist()
+        compose.onNodeWithText("Tipo de suministro → ChoicePicker").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Lectura → TextField").performScrollTo().assertIsDisplayed()
+        click("Ver JSON completo")
         compose.onNodeWithText("\"surfaceId\": \"meter\"", substring = true).assertExists()
         compose.onNodeWithText("\"component\": \"ChoicePicker\"", substring = true).assertExists()
         compose.onNodeWithText("\"@path\": \"/room\"", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Cerrar").performClick()
+        click("Cómo se genera")
+        compose.onNodeWithText("Tipo de suministro → ChoicePicker").assertDoesNotExist()
     }
 
     @Test
@@ -115,7 +125,10 @@ class HandoverFlowTest {
         compose.onNode(field("Descripción del daño")).assertDoesNotExist()
         click("Ver resumen")
         compose.onNodeWithText("Elige un tipo de suministro.").performScrollTo().assertIsDisplayed()
-        click("Agua")
+        option("Agua").performScrollTo().assertIsNotSelected().performClick()
+        option("Gas").performScrollTo().performClick().assertIsSelected()
+        option("Agua").assertIsNotSelected().performClick().assertIsSelected()
+        option("Gas").assertIsNotSelected()
         enter("Lectura", "-1")
         click("Ver resumen")
         compose.onNodeWithText("Introduce una lectura igual o mayor que cero.").performScrollTo().assertIsDisplayed()

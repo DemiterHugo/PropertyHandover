@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
@@ -17,9 +16,7 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -31,7 +28,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -51,13 +47,13 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.demiterhugo.propertyhandover.R
 import io.github.demiterhugo.propertyhandover.data.InputValue
 import io.github.demiterhugo.propertyhandover.domain.EntryType
 import io.github.demiterhugo.propertyhandover.ui.theme.BrandColor
+import io.github.demiterhugo.propertyhandover.ui.theme.forEntry
 
 @Composable
 internal fun HandoverScreen(
@@ -69,6 +65,7 @@ internal fun HandoverScreen(
 ) {
     val focusManager = LocalFocusManager.current
     val selectedType = state.selectedType
+    var inspectorExpanded by rememberSaveable { mutableStateOf(false) }
     Scaffold(topBar = { HandoverTopBar() }) { insets ->
         Box(Modifier.fillMaxSize().padding(insets).imePadding(), contentAlignment = Alignment.TopCenter) {
             Column(
@@ -88,18 +85,26 @@ internal fun HandoverScreen(
                         stringResource(form.message),
                         color = MaterialTheme.colorScheme.error,
                     )
-                    is FormState.Ready -> key(form.surface.id) {
-                        A2uiForm(
-                            node = form.surface.root,
-                            form = form,
-                            onValueChange = { path, value -> onValueChange(selectedType, path, value) },
-                            onEvent = { event ->
-                                focusManager.clearFocus()
-                                onEvent(selectedType, event)
-                            },
+                    is FormState.Ready -> {
+                        A2uiInspector(
+                            surface = form.surface,
+                            expanded = inspectorExpanded,
+                            onToggle = { inspectorExpanded = !inspectorExpanded },
                         )
-                        form.summary?.let { SummaryCard(it) { onShare(it) } }
-                        A2uiMessageAction(form.surface.sourceMessage)
+                        MaterialTheme(colorScheme = MaterialTheme.colorScheme.forEntry(selectedType)) {
+                            key(form.surface.id) {
+                                A2uiForm(
+                                    node = form.surface.root,
+                                    form = form,
+                                    onValueChange = { path, value -> onValueChange(selectedType, path, value) },
+                                    onEvent = { event ->
+                                        focusManager.clearFocus()
+                                        onEvent(selectedType, event)
+                                    },
+                                )
+                                form.summary?.let { SummaryCard(it) { onShare(it) } }
+                            }
+                        }
                     }
                 }
             }
@@ -153,6 +158,7 @@ private fun EntrySelector(selectedType: EntryType?, onSelect: (EntryType) -> Uni
                     title = stringResource(title),
                     hint = stringResource(hint),
                     icon = icon,
+                    type = type,
                     selected = selectedType == type,
                     onSelect = { onSelect(type) },
                 )
@@ -166,15 +172,17 @@ private fun EntryOption(
     title: String,
     hint: String,
     @DrawableRes icon: Int,
+    type: EntryType,
     selected: Boolean,
     onSelect: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val entryColors = colors.forEntry(type)
     Surface(
         shape = MaterialTheme.shapes.medium,
-        color = if (selected) colors.secondaryContainer else colors.surfaceContainerLow,
-        contentColor = if (selected) colors.onSecondaryContainer else colors.onSurface,
-        border = BorderStroke(1.dp, if (selected) colors.primary else colors.outlineVariant),
+        color = if (selected) entryColors.primaryContainer else colors.surfaceContainerLow,
+        contentColor = if (selected) entryColors.onPrimaryContainer else colors.onSurface,
+        border = BorderStroke(1.dp, if (selected) entryColors.primary else colors.outlineVariant),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth()
@@ -185,8 +193,8 @@ private fun EntryOption(
         ) {
             Surface(
                 shape = MaterialTheme.shapes.small,
-                color = if (selected) colors.primaryContainer else colors.surfaceVariant,
-                contentColor = if (selected) colors.onPrimaryContainer else colors.primary,
+                color = if (selected) entryColors.primary else entryColors.primaryContainer,
+                contentColor = if (selected) entryColors.onPrimary else entryColors.onPrimaryContainer,
             ) {
                 Icon(painterResource(icon), contentDescription = null, modifier = Modifier.padding(8.dp))
             }
@@ -196,7 +204,7 @@ private fun EntryOption(
                     hint,
                     modifier = Modifier.fillMaxWidth(),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (selected) colors.onSecondaryContainer else colors.onSurfaceVariant,
+                    color = if (selected) entryColors.onPrimaryContainer else colors.onSurfaceVariant,
                 )
             }
             Box(Modifier.widthIn(min = 24.dp), contentAlignment = Alignment.Center) {
@@ -213,33 +221,13 @@ private fun EntryOption(
 }
 
 @Composable
-private fun A2uiMessageAction(message: String) {
-    var visible by rememberSaveable { mutableStateOf(false) }
-    TextButton(onClick = { visible = true }) { Text(stringResource(R.string.view_a2ui_message)) }
-    if (visible) {
-        AlertDialog(
-            onDismissRequest = { visible = false },
-            title = { Text(stringResource(R.string.a2ui_message_title)) },
-            text = {
-                SelectionContainer(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
-                    Text(message, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { visible = false }) { Text(stringResource(R.string.close)) }
-            },
-        )
-    }
-}
-
-@Composable
 private fun SummaryCard(summary: String, onShare: () -> Unit) {
     val requester = remember { BringIntoViewRequester() }
     LaunchedEffect(summary) { requester.bringIntoView() }
 
     Card(
         modifier = Modifier.fillMaxWidth().bringIntoViewRequester(requester),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.summary_title), style = MaterialTheme.typography.titleMedium)

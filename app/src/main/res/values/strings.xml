@@ -2,7 +2,11 @@
     <string name="app_name">Property Handover</string>
     <string name="entry_prompt">¿Qué quieres registrar?</string>
     <string name="entry_a2ui_hint">Cada opción carga un formulario A2UI que se muestra con Jetpack Compose.</string>
-    <string name="view_a2ui_message">Ver mensaje A2UI</string>
+    <string name="a2ui_inspector_title">Cómo se genera</string>
+    <string name="a2ui_inspector_expanded">Desplegado</string>
+    <string name="a2ui_inspector_collapsed">Plegado</string>
+    <string name="a2ui_field_component">%1$s → %2$s</string>
+    <string name="view_a2ui_message">Ver JSON completo</string>
     <string name="a2ui_message_title">Mensaje A2UI</string>
     <string name="close">Cerrar</string>
     <string name="entry_damage">Daño en la vivienda</string>

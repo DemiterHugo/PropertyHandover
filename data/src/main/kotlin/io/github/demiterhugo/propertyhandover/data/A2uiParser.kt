@@ -81,8 +81,11 @@ internal object A2uiParser {
 
         private fun readChoicePicker(id: String, node: JsonObject): A2uiNode.ChoicePicker {
             node.allowOnly("id", "component", "label", "value", "variant", "displayStyle", "options")
-            if (node.string("variant") != "mutuallyExclusive" || node.string("displayStyle") != "chips") {
-                unsupported("ChoicePicker layout")
+            if (node.string("variant") != "mutuallyExclusive") unsupported("ChoicePicker layout")
+            val style = when (val value = node.string("displayStyle")) {
+                "chips" -> A2uiNode.ChoicePicker.DisplayStyle.CHIPS
+                "checkbox" -> A2uiNode.ChoicePicker.DisplayStyle.CHECKBOX
+                else -> unsupported("ChoicePicker display style: $value")
             }
             val options = node.array("options").map {
                 val option = it.asObject("option")
@@ -95,7 +98,7 @@ internal object A2uiParser {
             val selected = model.array(path.drop(1)).map { it.asString("choice value") }
             if (selected.size > 1 || !allowedValues.containsAll(selected)) invalid("Invalid initial choice: $path")
             store(path, InputValue.Choices(selected))
-            return A2uiNode.ChoicePicker(id, node.string("label"), path, options)
+            return A2uiNode.ChoicePicker(id, node.string("label"), path, options, style)
         }
 
         private fun readButton(id: String, node: JsonObject): A2uiNode.Button {
