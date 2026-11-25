@@ -21,8 +21,8 @@
         ]
       },
       {"id": "reading", "component": "TextField", "label": "Lectura", "placeholder": "Ej. 128,4", "value": {"@path": "/reading"}, "variant": "number"},
-      {"id": "submit", "component": "Button", "child": "submitLabel", "variant": "primary", "action": {"event": {"name": "showSummary"}}},
-      {"id": "submitLabel", "component": "Text", "text": "Ver resumen"}
+      {"id": "submit", "component": "Button", "child": "submitLabel", "variant": "primary", "action": {"event": {"name": "saveToReport"}}},
+      {"id": "submitLabel", "component": "Text", "text": "Guardar en el acta"}
     ],
     "dataModel": {"utility": [], "reading": ""}
   }

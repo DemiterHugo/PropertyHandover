@@ -31,16 +31,17 @@ class MainActivity : ComponentActivity() {
                     onSelectType = viewModel::select,
                     onValueChange = viewModel::updateValue,
                     onEvent = viewModel::handleEvent,
-                    onShare = ::shareSummary,
+                    onRemoveEntry = viewModel::removeEntry,
+                    onShare = ::shareReport,
                 )
             }
         }
     }
 
-    private fun shareSummary(summary: String) {
+    private fun shareReport(text: String) {
         val send = Intent(Intent.ACTION_SEND)
             .setType("text/plain")
-            .putExtra(Intent.EXTRA_TEXT, summary)
-        startActivity(Intent.createChooser(send, getString(R.string.share_summary)))
+            .putExtra(Intent.EXTRA_TEXT, text)
+        startActivity(Intent.createChooser(send, getString(R.string.share_report)))
     }
 }

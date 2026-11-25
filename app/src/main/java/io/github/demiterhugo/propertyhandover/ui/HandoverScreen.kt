@@ -6,19 +6,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,22 +30,23 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -61,13 +62,29 @@ internal fun HandoverScreen(
     onSelectType: (EntryType) -> Unit,
     onValueChange: (EntryType, String, InputValue) -> Unit,
     onEvent: (EntryType, String) -> Unit,
+    onRemoveEntry: (EntryType) -> Unit,
     onShare: (String) -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
     val selectedType = state.selectedType
     var inspectorExpanded by rememberSaveable { mutableStateOf(false) }
-    Scaffold(topBar = { HandoverTopBar() }) { insets ->
-        Box(Modifier.fillMaxSize().padding(insets).imePadding(), contentAlignment = Alignment.TopCenter) {
+    var reportVisible by rememberSaveable { mutableStateOf(false) }
+    val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    Scaffold(
+        topBar = { HandoverTopBar() },
+        bottomBar = {
+            if (!keyboardVisible) {
+                ReportBar(state.report.entries.size) {
+                    focusManager.clearFocus()
+                    reportVisible = true
+                }
+            }
+        },
+    ) { insets ->
+        Box(
+            Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets).imePadding(),
+            contentAlignment = Alignment.TopCenter,
+        ) {
             Column(
                 modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth()
                     .verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
@@ -102,13 +119,28 @@ internal fun HandoverScreen(
                                         onEvent(selectedType, event)
                                     },
                                 )
-                                form.summary?.let { SummaryCard(it) { onShare(it) } }
+                                if (selectedType in state.report.entries) {
+                                    Text(
+                                        text = stringResource(if (form.saved) R.string.entry_saved else R.string.entry_unsaved),
+                                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
+    if (reportVisible) {
+        HandoverReportSheet(
+            report = state.report,
+            onRemoveEntry = onRemoveEntry,
+            onShare = onShare,
+            onDismiss = { reportVisible = false },
+        )
     }
 }
 
@@ -221,19 +253,14 @@ private fun EntryOption(
 }
 
 @Composable
-private fun SummaryCard(summary: String, onShare: () -> Unit) {
-    val requester = remember { BringIntoViewRequester() }
-    LaunchedEffect(summary) { requester.bringIntoView() }
-
-    Card(
-        modifier = Modifier.fillMaxWidth().bringIntoViewRequester(requester),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.summary_title), style = MaterialTheme.typography.titleMedium)
-            Text(summary, style = MaterialTheme.typography.bodyMedium)
-            OutlinedButton(onClick = onShare, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.share_summary))
+private fun ReportBar(entryCount: Int, onOpen: () -> Unit) {
+    Surface(tonalElevation = 2.dp) {
+        Box(Modifier.fillMaxWidth().navigationBarsPadding(), contentAlignment = Alignment.Center) {
+            OutlinedButton(
+                onClick = onOpen,
+                modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+            ) {
+                Text(stringResource(R.string.open_report, entryCount, EntryType.entries.size))
             }
         }
     }

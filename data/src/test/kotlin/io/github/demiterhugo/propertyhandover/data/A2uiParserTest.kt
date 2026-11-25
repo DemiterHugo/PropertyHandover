@@ -30,7 +30,7 @@ class A2uiParserTest {
         assertEquals(InputValue.Choices(emptyList()), meter.initialValues[utility.path])
         assertEquals(A2uiNode.TextField.Variant.NUMBER, reading.variant)
         assertEquals("Ej. 128,4", reading.placeholder)
-        assertEquals("showSummary", (meterControls[3] as A2uiNode.Button).event)
+        assertEquals("saveToReport", (meterControls[3] as A2uiNode.Button).event)
     }
 
     @Test

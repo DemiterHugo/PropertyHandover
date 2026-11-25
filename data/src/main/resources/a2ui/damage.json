@@ -9,8 +9,8 @@
       {"id": "title", "component": "Text", "text": "## Detalles del daño"},
       {"id": "room", "component": "TextField", "label": "Estancia", "placeholder": "Ej. Cocina", "value": {"@path": "/room"}, "variant": "shortText"},
       {"id": "description", "component": "TextField", "label": "Descripción del daño", "placeholder": "Ej. Baldosa rota junto a la puerta", "value": {"@path": "/description"}, "variant": "longText"},
-      {"id": "submit", "component": "Button", "child": "submitLabel", "variant": "primary", "action": {"event": {"name": "showSummary"}}},
-      {"id": "submitLabel", "component": "Text", "text": "Ver resumen"}
+      {"id": "submit", "component": "Button", "child": "submitLabel", "variant": "primary", "action": {"event": {"name": "saveToReport"}}},
+      {"id": "submitLabel", "component": "Text", "text": "Guardar en el acta"}
     ],
     "dataModel": {"room": "", "description": ""}
   }
