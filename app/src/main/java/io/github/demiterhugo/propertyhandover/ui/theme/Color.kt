@@ -1,8 +1,11 @@
 package io.github.demiterhugo.propertyhandover.ui.theme
 
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import io.github.demiterhugo.propertyhandover.domain.EntryType
 
 internal val BrandColor = Color(0xFF31566C)
 
@@ -46,4 +49,34 @@ internal val DarkColorScheme = darkColorScheme(
     outline = Color(0xFF8DA4B2),
     outlineVariant = Color(0xFF455B67),
     error = Color(0xFFFFB4A7),
+)
+
+internal fun ColorScheme.forEntry(type: EntryType): ColorScheme {
+    val dark = surface.luminance() < 0.5f
+    return when (type) {
+        EntryType.DAMAGE -> if (dark) {
+            withEntryAccent(Color(0xFFF1BC9C), Color(0xFF462B1B), Color(0xFF483326), Color(0xFFFFDAC5))
+        } else {
+            withEntryAccent(Color(0xFF855135), Color.White, Color(0xFFFAEEE4), Color(0xFF663A24))
+        }
+        EntryType.METER -> if (dark) {
+            withEntryAccent(Color(0xFF9BD7CC), Color(0xFF123C37), Color(0xFF243F3A), Color(0xFFBDECE4))
+        } else {
+            withEntryAccent(Color(0xFF28665E), Color.White, Color(0xFFE5F2EF), Color(0xFF1D514A))
+        }
+    }
+}
+
+private fun ColorScheme.withEntryAccent(
+    accent: Color,
+    onAccent: Color,
+    container: Color,
+    onContainer: Color,
+): ColorScheme = copy(
+    primary = accent,
+    onPrimary = onAccent,
+    primaryContainer = container,
+    onPrimaryContainer = onContainer,
+    secondaryContainer = container,
+    onSecondaryContainer = onContainer,
 )

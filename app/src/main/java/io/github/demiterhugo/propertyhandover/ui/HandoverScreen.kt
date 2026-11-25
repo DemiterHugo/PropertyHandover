@@ -53,6 +53,7 @@ import io.github.demiterhugo.propertyhandover.R
 import io.github.demiterhugo.propertyhandover.data.InputValue
 import io.github.demiterhugo.propertyhandover.domain.EntryType
 import io.github.demiterhugo.propertyhandover.ui.theme.BrandColor
+import io.github.demiterhugo.propertyhandover.ui.theme.forEntry
 
 @Composable
 internal fun HandoverScreen(
@@ -90,17 +91,19 @@ internal fun HandoverScreen(
                             expanded = inspectorExpanded,
                             onToggle = { inspectorExpanded = !inspectorExpanded },
                         )
-                        key(form.surface.id) {
-                            A2uiForm(
-                                node = form.surface.root,
-                                form = form,
-                                onValueChange = { path, value -> onValueChange(selectedType, path, value) },
-                                onEvent = { event ->
-                                    focusManager.clearFocus()
-                                    onEvent(selectedType, event)
-                                },
-                            )
-                            form.summary?.let { SummaryCard(it) { onShare(it) } }
+                        MaterialTheme(colorScheme = MaterialTheme.colorScheme.forEntry(selectedType)) {
+                            key(form.surface.id) {
+                                A2uiForm(
+                                    node = form.surface.root,
+                                    form = form,
+                                    onValueChange = { path, value -> onValueChange(selectedType, path, value) },
+                                    onEvent = { event ->
+                                        focusManager.clearFocus()
+                                        onEvent(selectedType, event)
+                                    },
+                                )
+                                form.summary?.let { SummaryCard(it) { onShare(it) } }
+                            }
                         }
                     }
                 }
@@ -155,6 +158,7 @@ private fun EntrySelector(selectedType: EntryType?, onSelect: (EntryType) -> Uni
                     title = stringResource(title),
                     hint = stringResource(hint),
                     icon = icon,
+                    type = type,
                     selected = selectedType == type,
                     onSelect = { onSelect(type) },
                 )
@@ -168,15 +172,17 @@ private fun EntryOption(
     title: String,
     hint: String,
     @DrawableRes icon: Int,
+    type: EntryType,
     selected: Boolean,
     onSelect: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val entryColors = colors.forEntry(type)
     Surface(
         shape = MaterialTheme.shapes.medium,
-        color = if (selected) colors.secondaryContainer else colors.surfaceContainerLow,
-        contentColor = if (selected) colors.onSecondaryContainer else colors.onSurface,
-        border = BorderStroke(1.dp, if (selected) colors.primary else colors.outlineVariant),
+        color = if (selected) entryColors.primaryContainer else colors.surfaceContainerLow,
+        contentColor = if (selected) entryColors.onPrimaryContainer else colors.onSurface,
+        border = BorderStroke(1.dp, if (selected) entryColors.primary else colors.outlineVariant),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth()
@@ -187,8 +193,8 @@ private fun EntryOption(
         ) {
             Surface(
                 shape = MaterialTheme.shapes.small,
-                color = if (selected) colors.primaryContainer else colors.surfaceVariant,
-                contentColor = if (selected) colors.onPrimaryContainer else colors.primary,
+                color = if (selected) entryColors.primary else entryColors.primaryContainer,
+                contentColor = if (selected) entryColors.onPrimary else entryColors.onPrimaryContainer,
             ) {
                 Icon(painterResource(icon), contentDescription = null, modifier = Modifier.padding(8.dp))
             }
@@ -198,7 +204,7 @@ private fun EntryOption(
                     hint,
                     modifier = Modifier.fillMaxWidth(),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (selected) colors.onSecondaryContainer else colors.onSurfaceVariant,
+                    color = if (selected) entryColors.onPrimaryContainer else colors.onSurfaceVariant,
                 )
             }
             Box(Modifier.widthIn(min = 24.dp), contentAlignment = Alignment.Center) {
@@ -221,7 +227,7 @@ private fun SummaryCard(summary: String, onShare: () -> Unit) {
 
     Card(
         modifier = Modifier.fillMaxWidth().bringIntoViewRequester(requester),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.summary_title), style = MaterialTheme.typography.titleMedium)
